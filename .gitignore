@@ -1,2 +1,4 @@
 pyproject.toml
 stockPull.parquet
+stockData.db
+stockPullClean.parquet
