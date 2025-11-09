@@ -12,10 +12,10 @@ ALTER TABLE stockTest ADD COLUMN Percentage DOUBLE;
 UPDATE stockTest SET Percentage = 100 * (Close/Open) - 100; 
 
 -- Adding high/low percentage column to test table:
-ALTER TABLE stockTest ADD COLUMN LowHighPercentage DOUBLE;
+-- ALTER TABLE stockTest ADD COLUMN LowHighPercentage DOUBLE;
 
 -- Adding values to the low/high percentage column to the test table: 
-UPDATE stockTest SET LowHighPercentage = 100 * (High/Low) - 100; 
+-- UPDATE stockTest SET LowHighPercentage = 100 * (High/Low) - 100; 
 
 -- Adding three day moving average
 
@@ -101,3 +101,110 @@ FROM Averages
 WHERE 
     stockTest.Date = Averages.Date
     AND stockTest.Ticker = Averages.Ticker;
+
+
+-- Repeating all commands but for the actual stock table with all tickers:
+
+-- Adding percentage column to the test table
+ALTER TABLE stockTable ADD COLUMN Percentage DOUBLE;
+
+-- Adding values to the percentage column to the test table 
+
+-- 100 * (CLOSE/OPEN) - 100
+UPDATE stockTable SET Percentage = 100 * (Close/Open) - 100; 
+
+-- Adding high/low percentage column to test table:
+-- ALTER TABLE stockTable ADD COLUMN LowHighPercentage DOUBLE;
+
+-- Adding values to the low/high percentage column to the test table: 
+-- UPDATE stockTable SET LowHighPercentage = 100 * (High/Low) - 100; 
+
+-- Adding three day moving average
+
+ALTER TABLE stockTable ADD COLUMN ThreeDaySimpleAverage DOUBLOP
+
+WITH Averages AS ( SELECT Date, Ticker, ROW_NUMBER() OVER ( 
+			PARTITION BY Ticker 
+			ORDER BY Date) 
+		AS rn, 
+        Avg(Close) OVER ( 
+			PARTITION BY Ticker 
+			ORDER BY Date 
+			ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) 
+		AS CalculatedAvg
+FROM stockTable
+)
+
+UPDATE stockTable
+SET ThreeDaySimpleAverage = 
+	-- We have to set the row number to null when theres less than three days in the moving average due to there not being three days of data available
+    CASE 
+        WHEN Averages.rn < 3 THEN NULL 
+        ELSE Averages.CalculatedAvg   
+    END
+FROM Averages
+WHERE 
+    stockTable.Date = Averages.Date
+    AND stockTable.Ticker = Averages.Ticker;
+
+-- Adding 50-day moving average 
+
+
+ALTER TABLE stockTable ADD COLUMN FiftyDaySimpleAverage DOUBLE;
+
+WITH Averages AS ( SELECT Date, Ticker, ROW_NUMBER() OVER ( 
+			PARTITION BY Ticker 
+			ORDER BY Date) 
+		AS rn, 
+        Avg(Close) OVER ( 
+			PARTITION BY Ticker 
+			ORDER BY Date 
+			ROWS BETWEEN 49 PRECEDING AND CURRENT ROW) 
+		AS CalculatedAvg
+FROM stockTable
+)
+
+UPDATE stockTable
+SET FiftyDaySimpleAverage = 
+	-- We have to set the row number to null when theres less than fifty days in the moving average due to there not being fifty days of data available
+    CASE 
+        WHEN Averages.rn < 50 THEN NULL 
+        ELSE Averages.CalculatedAvg   
+    END
+FROM Averages
+WHERE 
+    stockTable.Date = Averages.Date
+    AND stockTable.Ticker = Averages.Ticker;
+
+-- Adding 200-day moving average
+
+ALTER TABLE stockTable ADD COLUMN TwoHundredDaySimpleAverage DOUBLE;
+
+WITH Averages AS ( SELECT Date, Ticker, ROW_NUMBER() OVER ( 
+			PARTITION BY Ticker 
+			ORDER BY Date) 
+		AS rn, 
+        Avg(Close) OVER ( 
+			PARTITION BY Ticker 
+			ORDER BY Date 
+			ROWS BETWEEN 199 PRECEDING AND CURRENT ROW) 
+		AS CalculatedAvg
+FROM stockTable
+)
+
+UPDATE stockTable
+SET TwoHundredDaySimpleAverage = 
+	-- We have to set the row number to null when theres less than fifty days in the moving average due to there not being fifty days of data available
+    CASE 
+        WHEN Averages.rn < 200 THEN NULL 
+        ELSE Averages.CalculatedAvg   
+    END
+FROM Averages
+WHERE 
+    stockTable.Date = Averages.Date
+    AND stockTable.Ticker = Averages.Ticker;
+
+
+-- Creating training and test sets 
+CREATE TABLE stockTrain AS SELECT * FROM stockTable WHERE(Date<'2023-01-01');
+CREATE TABLE stockTest AS SELECT * FROM stockTable WHERE(Date>='2023-01-01');
